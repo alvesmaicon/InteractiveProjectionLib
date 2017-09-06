@@ -4,7 +4,6 @@ cmake_minimum_required(VERSION 2.8)
 # Project name
 project(InteractiveProjectionLib)
 
-
 # OpenCV is required for build
 find_package(OpenCV REQUIRED)
 
@@ -26,18 +25,28 @@ endif()
 include_directories ("${PROJECT_BINARY_DIR}")
 
 # Adding shared library
-add_library(iplib SHARED ${PROJECT_SOURCE_DIR}/src/source.cpp)
+add_library (iplib SHARED ${PROJECT_SOURCE_DIR}/src/source.cpp)
+add_library (iplib_static STATIC ${PROJECT_SOURCE_DIR}/src/source.cpp)
 
-# Adding static library
-#add_library(iplib_static STATIC ${PROJECT_SOURCE_DIR}/src/source.cpp)
 
 # Link iplib with OpenCV libraries
-target_link_libraries(iplib ${OpenCV_LIBS})
+target_link_libraries (iplib ${OpenCV_LIBS})
+target_link_libraries (iplib_static ${OpenCV_LIBS})
 
 # Adding the install targets
 install (TARGETS iplib EXPORT iplib DESTINATION bin)
-install(EXPORT iplib NAMESPACE ip_ DESTINATION lib/iplib)
-install (FILES include/iplib.hpp DESTINATION include/iplib)
+install (EXPORT iplib NAMESPACE ip_ DESTINATION lib/iplib)
+install (FILES src/iplib.hpp DESTINATION include/iplib)
+
+# Setting extra libs
+set (EXTRA_LIBS ${EXTRA_LIBS} iplib)
+
+# Adding the executable
+add_executable (sample sample/sample.cpp)
+target_link_libraries (sample iplib)
+target_link_libraries (sample ${OpenCV_LIBS})
+
+
 
 
 
