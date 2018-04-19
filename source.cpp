@@ -14,12 +14,19 @@ void view_cam()
     cout << "Built with OpenCV " << CV_VERSION << endl;
     Mat image;
     VideoCapture capture;
-    capture.open(0);
+    capture.open(1);
     if(capture.isOpened())
     {
         cout << "Capture is opened, press esc to close" << endl;
         for(;;)
         {
+
+        	putText(image, image.width,
+            Point(20, 50),
+            FONT_HERSHEY_COMPLEX, 1, // font face and scale
+            Scalar(255, 255, 255), // white
+            1, LINE_AA); // line thickness and type
+
             capture >> image;
             if(image.empty())
                 break;
