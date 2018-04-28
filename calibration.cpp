@@ -395,9 +395,16 @@ int main( int argc, char** argv )
         else
             capture.open(inputFilename);
     }
-    else
+    else{
         //capture.open(cameraId);
 		capture.open(1);
+		capture >> cameraMatrix;
+	}
+    /**setting the camera resolution**/
+
+    capture.set(CV_CAP_PROP_FOURCC,CV_FOURCC('M','J','P','G'));
+    capture.set(CV_CAP_PROP_FRAME_WIDTH, 800);
+    capture.set(CV_CAP_PROP_FRAME_HEIGHT, 600);
 		
 	
 
@@ -413,7 +420,7 @@ int main( int argc, char** argv )
 
 
     /* Code for open chessboard image and find corners*/
-    chessboardMatrix = imread("patternsmall.png", 0);
+    chessboardMatrix = imread("pattern-800x600.png", 0);
 	if (chessboardMatrix.empty())
 	{
     	std::cout << "!!! Failed imread(): image not found" << std::endl;
