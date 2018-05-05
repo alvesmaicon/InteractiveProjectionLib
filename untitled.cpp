@@ -14,27 +14,27 @@ int main(int argc, char** argv)
 {
 
 
-	Mat blue(480, 640, CV_8UC3, Scalar(255, 0, 0));
+	Mat blue(600, 800, CV_8UC3, Scalar(255, 0, 0));
     namedWindow("blue", WINDOW_NORMAL);
   
     imshow("blue", blue);
 
-    Mat green(480, 640, CV_8UC3, Scalar(0, 255, 0));
+    Mat green(600, 800, CV_8UC3, Scalar(0, 255, 0));
     namedWindow("green", WINDOW_NORMAL);
   
     imshow("green", green);
 
-    Mat red(480, 640, CV_8UC3, Scalar(0, 0, 255));
+    Mat red(600, 800, CV_8UC3, Scalar(0, 0, 255));
     namedWindow("red", WINDOW_NORMAL);
   
     imshow("red", red);
 
-    Mat black(480, 640, CV_8UC3, Scalar(0, 0, 0));
+    Mat black(600, 800, CV_8UC3, Scalar(0, 0, 0));
     namedWindow("black", WINDOW_NORMAL);
   
     imshow("black", black);
 
-    Mat white(480, 640, CV_8UC3, Scalar(255, 255, 255));
+    Mat white(600, 800, CV_8UC3, Scalar(255, 255, 255));
     namedWindow("white", WINDOW_NORMAL);
   
     imshow("white", white);

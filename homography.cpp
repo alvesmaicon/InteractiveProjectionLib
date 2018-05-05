@@ -6,9 +6,8 @@
 #include "opencv2/videoio.hpp"
 #include "opencv2/highgui.hpp"
 
-#include <cctype>
+
 #include <stdio.h>
-#include <string.h>
 #include <time.h>
 #include <iostream>
 
@@ -20,6 +19,7 @@ const char* liveCaptureHelp =
     "The following hot-keys may be used:\n"
         "  <ESC>, 'q' - quit the program\n"
         "  'c' - start calibrate perspective\n"
+        "  'p' - start photometric calibration\n"
         "  'u' - switch undistortion on/off\n";
 
 
@@ -66,19 +66,26 @@ enum { DETECTION = 0, CAPTURING = 1, CALIBRATED = 2};
 
 
 int main( int argc, char** argv ){
+
+
+    double V[3][3], A[3][3], F[3], C[3], vetR[3], vetG[3], vetB[3];
 	
-    float Baverage = 0, Raverage = 0, Gaverage = 0; 
+    double Baverage = 0, Raverage = 0, Gaverage = 0; 
 
 	Size boardSize, imageSize;
 	Mat cameraMatrix, chessboardMatrix, chessboardMatrix2, H, inverseH, cameraView;
-	int i, nframes;
-	bool undistortImage = false, undistortProjection = false;
+	int i;
+	bool undistortImage = false;
 	VideoCapture capture;
-	int mode = DETECTION;
+	int mode = DETECTION, photometric = DETECTION;
 
 	/* Selected camera is usb camera by default*/
-	int cameraId = 1;
-    Mat red(480, 640, CV_8UC3, Scalar(0, 0, 255));
+	int cameraId = 0;
+
+    int msec = 0, trigger = 5000; /* 5000ms */
+    clock_t before, difference;
+    int stage = 0;
+    
 	vector<Point2f> cornersPattern, cornersCameraView;
 
 
@@ -146,6 +153,7 @@ int main( int argc, char** argv ){
 	namedWindow("Camera View", WINDOW_NORMAL);
 
 
+    /* Starting camera loop */
 	for(i = 0;;i++){
 		Mat view;
 
@@ -168,29 +176,329 @@ int main( int argc, char** argv ){
 
                 H = findHomography(cornersCameraView, cornersPattern);
                 mode = CALIBRATED;
-                /*undistorting projeted image*/
-                /*
-                H.at<double>(3,1) /= 2; 
-                H.at<double>(3,2) /= 2; 
-                H.at<double>(1,3) *= 2; 
-                H.at<double>(2,3) *= 2; 
-
-                warpPerspective(chessboardMatrix2, chessboardMatrix2, H, chessboardMatrix.size());
-
-                imshow("Projection", chessboardMatrix2);
-
-                */
-    		    
+                   		    
             }
 			
     	}
 
     	if( mode == CALIBRATED && undistortImage){
     		Mat temp = view.clone();
-            /*undistorting camera image view to center top perspective*/
+            /*undistorting camera image view to top center perspective*/
     		warpPerspective(temp, view, H, temp.size());
             
     	}
+
+        if ( photometric == CAPTURING ){
+
+
+            capture.set(CAP_PROP_AUTO_EXPOSURE, 0.25); //setting exposure to manual
+
+
+
+
+            switch (stage){
+
+                
+                // WHITE
+                case 1: {
+
+
+                    Mat white(600, 800, CV_8UC3, Scalar(255, 255, 255));
+                    imshow("Projection", white);
+
+                    difference = clock() - before;
+                    msec = difference * 1000 / CLOCKS_PER_SEC;
+
+                    //wait 5 sec
+                    if ( msec >= trigger ){ 
+
+
+                        for(int i = 0; i < view.size().height; i++){
+                            for(int j = 0; j < view.size().width; j++){
+                                Raverage += getRedCv(view, j, i);
+                                Gaverage += getGreenCv(view, j, i);
+                                Baverage += getBlueCv(view, j, i);
+
+
+
+                            }
+                        }
+
+                        double tam = view.size().width * view.size().height;
+                        A[0][0] = Raverage/tam;
+                        A[1][1] = Gaverage/tam;
+                        A[2][2] = Baverage/tam;
+
+                        printf("The matrix A is:\n");
+                        for(int i = 0; i < 3; i++){
+                            for (int j = 0; j<3; j++){
+                                printf("%f\t", A[i][j]);
+                            }
+                            printf("\n");
+                        }
+
+
+                        // reseting averages
+
+                        Raverage = 0;
+                        Gaverage = 0;
+                        Baverage = 0;
+
+                        printf("Stage 1 finalized\n__________________________________\n");
+
+
+                        before = clock();
+                        stage = 2;
+
+
+                    }
+                }
+                break;
+
+                
+
+                case 2: { 
+
+                    Mat red(600, 800, CV_8UC3, Scalar(0, 0, 255));
+                    imshow("Projection", red);
+
+                    difference = clock() - before;
+                    msec = difference * 1000 / CLOCKS_PER_SEC;
+
+                    //wait 5 sec
+                    if ( msec >= trigger ){ 
+
+
+
+                        for(int i = 0; i < view.size().height; i++){
+                            for(int j = 0; j < view.size().width; j++){
+                                Raverage += getRedCv(view, j, i);
+                                Gaverage += getGreenCv(view, j, i);
+                                Baverage += getBlueCv(view, j, i);
+
+
+
+                            }
+                        }
+
+                        double tam = view.size().width * view.size().height;
+                        vetR[0] = Raverage/tam;
+                        vetR[1] = Gaverage/tam;
+                        vetR[2] = Baverage/tam;
+
+                        printf("The vector vetR is:\n");
+                        for(int i = 0; i < 3; i++){
+                                printf("%f\t", vetR[i]);
+                            }
+                        printf("\n");
+
+
+                        // reseting averages
+
+                        Raverage = 0;
+                        Gaverage = 0;
+                        Baverage = 0;
+
+                        printf("Stage 2 finalized\n__________________________________\n");
+
+
+                        before = clock();
+                        stage = 3;
+
+
+                    }
+                }
+                break;
+                
+
+                case 3: {
+
+                    Mat green(600, 800, CV_8UC3, Scalar(0, 255, 0));
+                    imshow("Projection", green);
+
+                    difference = clock() - before;
+                    msec = difference * 1000 / CLOCKS_PER_SEC;
+
+                    //wait 5 sec
+                    if ( msec >= trigger ){ 
+
+                        for(int i = 0; i < view.size().height; i++){
+                            for(int j = 0; j < view.size().width; j++){
+                                Raverage += getRedCv(view, j, i);
+                                Gaverage += getGreenCv(view, j, i);
+                                Baverage += getBlueCv(view, j, i);
+
+
+
+                            }
+                        }
+
+                        double tam = view.size().width * view.size().height;
+                        vetG[0] = Raverage/tam;
+                        vetG[1] = Gaverage/tam;
+                        vetG[2] = Baverage/tam;
+
+                        printf("The vector vetG is:\n");
+                        for(int i = 0; i < 3; i++){
+                                printf("%f\t", vetG[i]);
+                            }
+                        printf("\n");
+
+
+                        // reseting averages
+
+                        Raverage = 0;
+                        Gaverage = 0;
+                        Baverage = 0;
+
+                        printf("Stage 3 finalized\n__________________________________\n");
+
+
+                        before = clock();
+                        stage = 4;
+
+
+                    }
+                }
+                break;
+                    
+                
+
+                case 4: {
+
+                    Mat blue(600, 800, CV_8UC3, Scalar(255, 0, 0));
+                    imshow("Projection", blue);
+
+                    difference = clock() - before;
+                    msec = difference * 1000 / CLOCKS_PER_SEC;
+
+                    //wait 5 sec
+                    if ( msec >= trigger ){ 
+
+
+                        for(int i = 0; i < view.size().height; i++){
+                            for(int j = 0; j < view.size().width; j++){
+                                Raverage += getRedCv(view, j, i);
+                                Gaverage += getGreenCv(view, j, i);
+                                Baverage += getBlueCv(view, j, i);
+
+
+
+                            }
+                        }
+
+                        double tam = view.size().width * view.size().height;
+                        vetB[0] = Raverage/tam;
+                        vetB[1] = Gaverage/tam;
+                        vetB[2] = Baverage/tam;
+
+                        printf("The vector vetB is:\n");
+                        for(int i = 0; i < 3; i++){
+                                printf("%f\t", vetB[i]);
+                            }
+                        printf("\n");
+
+
+                        // reseting averages
+
+                        Raverage = 0;
+                        Gaverage = 0;
+                        Baverage = 0;
+
+
+                        V[0][0] = vetR[0]/vetR[0];
+                        V[1][0] = vetR[1]/vetR[0];
+                        V[2][0] = vetR[2]/vetR[0];
+                        V[0][1] = vetG[0]/vetG[1];
+                        V[1][1] = vetG[1]/vetG[1];
+                        V[2][1] = vetG[2]/vetG[1];
+                        V[0][2] = vetB[0]/vetB[2];
+                        V[1][2] = vetB[1]/vetB[2];
+                        V[2][2] = vetB[2]/vetB[2];
+
+
+
+                        printf("\nThe matrix V is:\n");
+                        for(int i = 0; i < 3; i++){
+                            for (int j = 0; j<3; j++){
+                                printf("%f\t", V[i][j]);
+                            }
+                            printf("\n");
+                        }
+
+                        printf("Stage 4 finalized\n__________________________________\n");
+
+
+                        photometric = CALIBRATED;
+                        imshow("Projection", chessboardMatrix);
+
+                    }
+                }
+                break;                
+
+                // BLACK
+                default: {
+                    Mat black(600, 800, CV_8UC3, Scalar(0, 0, 0));
+                    imshow("Projection", black);
+
+                    difference = clock() - before;
+                    msec = difference * 1000 / CLOCKS_PER_SEC;
+
+                    //wait 5 sec
+                    if ( msec >= trigger ){ 
+
+                        for(int i = 0; i < view.size().height; i++){
+                            for(int j = 0; j < view.size().width; j++){
+                                Raverage += getRedCv(view, j, i);
+                                Gaverage += getGreenCv(view, j, i);
+                                Baverage += getBlueCv(view, j, i);
+
+
+
+                            }
+                        }
+
+                        double tam = view.size().width * view.size().height;
+                        F[0] = Raverage/tam;
+                        F[1] = Gaverage/tam;
+                        F[2] = Baverage/tam;
+
+                        printf("The vector F is:\n");
+                        for(int i = 0; i < 3; i++){
+                                printf("%f\t", F[i]);
+                            }
+                        printf("\n");
+
+                        // reseting averages
+
+                        Raverage = 0;
+                        Gaverage = 0;
+                        Baverage = 0;
+
+
+                        printf("Stage 0 finalized\n__________________________________\n");
+
+
+                        before = clock();
+                        stage = 1;
+
+
+                    }
+                }
+
+
+
+                
+
+
+
+            }
+
+            
+            
+        }
+            
+           
 
 
         imshow("Camera View", view);
@@ -201,9 +509,19 @@ int main( int argc, char** argv ){
         if( key == 27 )
             break;
 
+        if( key == 'p' && mode == CALIBRATED && undistortImage && photometric == DETECTION){
+            photometric = CAPTURING;
+
+            /*
+            double exposure = capture.get(CAP_PROP_EXPOSURE);
+            printf("The exposure is: %f\n", exposure);
+
+            */
+            before = clock();
+        }
+
         if( key == 'u' && mode == CALIBRATED )
             undistortImage = !undistortImage;
-            undistortProjection = !undistortProjection;
 
 
         if( capture.isOpened() && key == 'c' )
@@ -215,3 +533,58 @@ int main( int argc, char** argv ){
 
     }
 }
+/*
+-O sistema da projeção interativa é composto por uma câmera, um projetor e uma superfície de projeção
+-Para que o sistema funcione corretamente é necessário que a imagem capturada pela câmera esteja com a mesma forma e tamanho que a imagem projetada
+-Para isto é usado um método para encontrar pontos correspondentes na imagem projetada e na imagem capturada. 
+-É projetado um tabuleiro de xadrez 9x6, encontrados os cantos do tabuleiro e da imagem capturada, 
+e então é feito um ajuste na imagem capturada para que ela fique com a mesma forma e tamanho da imagem projetada
+-também é preciso usar uma imagem prevista para fazer comparações, pra isso é necessário fazer uns ajustes de cor em uma cópia da imagem projetada:
+de acordo com um modelo fotométrico, a partir da imagem projetada é possível obter uma previsão de como a imagem projetada será capturada pela camera
+com os seguintes passos podemos calibrar a imagem prevista:
+-projetar uma imagem preta para computar F
+    Projetar imagem branca para computar A
+    Projetar uma imagem RED e capturar red, green, blue e colocar na coluna 1 da matrix V
+    projetar GREEN e capturar red, green e vlue colocar na coluna 2 da matriz V
+    projetar BLUE e capturar red green e blue e colocar na coluna 3 da matrz V
+
+Depois de obter as matrizes e vetores, preciso percorrer pixel por pixel cada frame para gerar a imagem prevista
+O Modelo fotométrico é C = A(VP + F)
+    C é o pixel na imagem prevista, 
+    A é uma matriz diagonal, 
+    V é uma matriz com todas as correspondencias de cores, 
+    P é o ponto no frame, 
+    e F é a média de luz ambiente
+Ainda não sei se eu preciso capturar para cada ponto da imagem ou é possível fazer uma média (ainda vou descobrir).
+
+
+Preciso de uma tecla para indicar o proximo passo, ou simplesmente dar um tempo x para o programa calcular e passar para o proximo passo
+E depois de calcular tudo, a imagem prevista será exibida lado a lado com a imagem capturada da câmera para comparações.
+Em seguida preciso fazer a diferença de captura para encontrar a região da mão, 
+    calcular o contorno, 
+    encontrar a ponta do dedo, 
+    separar uma região de interesse em ambas imagens
+    desenhar um circulo na ponta do dedo na projeção, 
+    e comparar as regiões de interesse com metodo orb ou brisk para descobrir se ocorreu um toque ou não
+        averiguando a distancia média dos pontos de interesse. tomara que exista uma função pronta pra isso no opencv
+
+    E fim.
+
+
+
+
+Planejamento fotometria
+preciso ter um gatilho para trocar de imagem e passar para o proximo passo
+seria interessante dizer que o colorido já está calibrado
+
+projetar a cor, esperar 5 segundos para iniciar a calibração atual, pós 5 segundos iniciar captura da cor
+quando a captura estiver terminada, projetar a proxima cor e esperar mais 5 segundos até a câmera se adaptar com a nova cor
+capturar e passar para o proximo passo
+
+
+
+
+
+
+
+*/
