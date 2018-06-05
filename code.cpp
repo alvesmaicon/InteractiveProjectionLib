@@ -1,5 +1,6 @@
 #include "opencv2/core.hpp"
-#include "opencv2/imgproc.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/features2d/features2d.hpp"
 #include "opencv2/video.hpp"
 #include "opencv2/videoio.hpp"
 #include "opencv2/highgui.hpp"
@@ -46,8 +47,8 @@ int main(int argc, const char** argv)
 
     Mat img = Mat::zeros(800, 600, CV_8UC1);
     Mat inputFrame, frame, foregroundMask, foreground, background;
-    Mat croppedCapture = Mat::zeros(200, 200, CV_8UC1);
-    Mat croppedProjectedImage = Mat::zeros(200, 200, CV_8UC1);
+    Mat croppedCaptured = Mat::zeros(200, 200, CV_8UC1);
+    Mat croppedProjected = Mat::zeros(200, 200, CV_8UC1);
 
     VideoCapture cap;
 
@@ -95,6 +96,11 @@ int main(int argc, const char** argv)
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
 
+
+    // creating BRISK descriptor
+    cv::Ptr<cv::BRISK> briskDescriptor = cv::BRISK::create();
+
+    double min_dist = 200;
 
     for (;;)
     {
@@ -159,8 +165,6 @@ int main(int argc, const char** argv)
         	
         	drawContours( drawing, contours, max_contour, Scalar(255,255,255), -1, 8, vector<Vec4i>(), 0, Point() );
 
-        	//Moments m = moments(drawing, true);
-			//Point p1(m.m10/m.m00, m.m01/m.m00);
 
 			Moments mu = moments(contours[max_contour]);
     		Point centroid = Point (mu.m10/mu.m00 , mu.m01/mu.m00);
@@ -196,23 +200,70 @@ int main(int argc, const char** argv)
         	startX = startX + 200 >= 800 ? 600 : startX;
         	startY = startY + 200 >= 600 ? 400 : startY;
 
-        	cout << "StartX: " << startX << ", endX: " << startX + 200 << endl;
-        	cout << "StartY: " << startY << ", endY: " << startY + 200 << endl;
+        	//cout << "StartX: " << startX << ", endX: " << startX + 200 << endl;
+        	//cout << "StartY: " << startY << ", endY: " << startY + 200 << endl;
         	
         	Rect croppedRect(startX, startY, 200, 200);
-        	croppedCapture = frame(croppedRect);
 
+        	// Getting cropped images from fingertip in projected image and captured image
+        	croppedCaptured = frame(croppedRect);
+        	cvtColor(croppedCaptured, croppedCaptured, COLOR_BGR2GRAY);
+
+        	model->getBackgroundImage(background);
+        	if (!background.empty()){
+        		croppedProjected = background(croppedRect);
+        		cvtColor(croppedProjected, croppedProjected, COLOR_BGR2GRAY);
+        	}
+
+        	// Detecting touch
+
+        	vector<KeyPoint> keypointsCap, keypointsProj;
+   			Mat descriptorsCap, descriptorsProj;
+
+   			
+
+   			Ptr<FastFeatureDetector> detector = FastFeatureDetector::create(10);
+
+   			detector->detect(croppedCaptured,keypointsCap, Mat());
+   			detector->detect(croppedProjected,keypointsProj, Mat());
+
+   			briskDescriptor->compute(croppedCaptured, keypointsCap, descriptorsCap);
+   			briskDescriptor->compute(croppedProjected, keypointsProj, descriptorsProj);
+
+   			DescriptorMatcher* matcher = new BFMatcher(NORM_HAMMING, true);
+
+   			vector<DMatch> matches;
+			matcher->match(descriptorsCap, descriptorsProj, matches);
+
+			cv::Mat all_matches;
+			cv::drawMatches( croppedCaptured, keypointsCap, croppedProjected, keypointsProj,
+                     matches, all_matches, cv::Scalar::all(-1), cv::Scalar::all(-1),
+                     vector<char>(),cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+			cv::imshow( "BRISK All Matches", all_matches );
+
+			double med_dist = 0;
+			if(!matches.empty()){
+				for(int i = 0; i < matches.size(); i++){
+					med_dist += matches[i].distance;
+				}
+
+				med_dist /= matches.size();
+				if(med_dist < min_dist) min_dist = med_dist;
+				cout << "Med dist: " << med_dist << "\t\t\t Min dist: " << min_dist << endl;
+
+			}
+
+			
         }
+
+
         imshow("image", frame);
-        imshow("Fingertip rectangle", croppedCapture);
+        //imshow("Fingertip rectangle", croppedCaptured);
         imshow("Fingertip identification", drawing);
 
 
         
-        model->getBackgroundImage(background);
-        if (!background.empty()){
-        	croppedProjectedImage = background(croppedRect);
-        }
+        
             
         
         
