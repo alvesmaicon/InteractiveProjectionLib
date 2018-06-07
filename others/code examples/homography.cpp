@@ -20,20 +20,15 @@ const char* liveCaptureHelp =
     "  <ESC>, 'q' - quit the program\n"
     "  'c' - start calibrate perspective\n"
     "  'p' - start photometric calibration\n"
+    "  'd' - start detecting touch\n"
     "  'u' - switch undistortion on/off\n";
 
 
 void setPixelCv(cv::Mat& dataMatrix, int i, int j, uchar r, uchar g, uchar b)
 {
-
-    // The color max is 250
-
-    
-
     dataMatrix.at<cv::Vec3b>(j%dataMatrix.rows, i%dataMatrix.cols)[0] = b;
     dataMatrix.at<cv::Vec3b>(j%dataMatrix.rows, i%dataMatrix.cols)[1] = g;
     dataMatrix.at<cv::Vec3b>(j%dataMatrix.rows, i%dataMatrix.cols)[2] = r;
-
 }
 
 uchar getRedCv(cv::Mat& dataMatrix, int i, int j)
@@ -75,11 +70,12 @@ int main( int argc, char** argv )
     double AV[3][3], AF[3];
 
     double Baverage = 0, Raverage = 0, Gaverage = 0;
+    double S = 0.5;
 
     Size boardSize, imageSize;
-    Mat cameraMatrix, chessboardMatrix, H, cameraView, predictedImage, projectedImage, img1;
+    Mat cameraMatrix, chessboardMatrix, H, cameraView, predictedImage, predictedImageGray, projectedImage, img1, handRegion;
     int i;
-    bool undistortImage = false;
+    bool undistortImage = false, detectingTouch = false;
     VideoCapture capture;
     int mode = DETECTION, photometric = DETECTION;
 
@@ -121,7 +117,7 @@ int main( int argc, char** argv )
 
 
     /* Code for open image*/
-    img1 = imread("img1.jpg", CV_LOAD_IMAGE_COLOR);
+    img1 = imread("img2.jpg", CV_LOAD_IMAGE_COLOR);
     if (img1.empty())
         return fprintf( stderr, "Failed imread(): image not found\n"), -2;
 
@@ -132,18 +128,17 @@ int main( int argc, char** argv )
 
     predictedImage = chessboardMatrix;
     projectedImage = chessboardMatrix;
+
+
     namedWindow("Projection", WINDOW_NORMAL);
-    
     imshow("Projection", projectedImage);
-
-
     namedWindow("Camera View", WINDOW_NORMAL);
 
 
     /* Starting camera loop */
     for(i = 0;; i++)
     {
-        Mat view;
+        Mat view, viewGray;
 
         if(capture.isOpened())
         {
@@ -200,7 +195,7 @@ int main( int argc, char** argv )
 
 
                 Mat white(600, 800, CV_8UC3, Scalar(255, 255, 255));
-                imshow("Projection", white);
+                //imshow("Projection", white);
 
                 difference = clock() - before;
                 msec = difference * 1000 / CLOCKS_PER_SEC;
@@ -208,7 +203,7 @@ int main( int argc, char** argv )
                 //wait 5 sec
                 if ( msec >= trigger )
                 {
-
+                    imwrite( "WHITE.jpg", view);
 
                     for(int i = 0; i < view.size().height; i++)
                     {
@@ -217,9 +212,6 @@ int main( int argc, char** argv )
                             Raverage += getRedCv(view, j, i);
                             Gaverage += getGreenCv(view, j, i);
                             Baverage += getBlueCv(view, j, i);
-
-
-
                         }
                     }
 
@@ -268,7 +260,7 @@ int main( int argc, char** argv )
             {
 
                 Mat red(600, 800, CV_8UC3, Scalar(0, 0, 255));
-                imshow("Projection", red);
+                //imshow("Projection", red);
 
                 difference = clock() - before;
                 msec = difference * 1000 / CLOCKS_PER_SEC;
@@ -278,7 +270,7 @@ int main( int argc, char** argv )
                 {
 
 
-
+                    imwrite( "RED.jpg", view);
                     for(int i = 0; i < view.size().height; i++)
                     {
                         for(int j = 0; j < view.size().width; j++)
@@ -328,7 +320,7 @@ int main( int argc, char** argv )
             {
 
                 Mat green(600, 800, CV_8UC3, Scalar(0, 255, 0));
-                imshow("Projection", green);
+                //imshow("Projection", green);
 
                 difference = clock() - before;
                 msec = difference * 1000 / CLOCKS_PER_SEC;
@@ -336,7 +328,7 @@ int main( int argc, char** argv )
                 //wait 5 sec
                 if ( msec >= trigger )
                 {
-
+                    imwrite( "GREEN.jpg", view);
                     for(int i = 0; i < view.size().height; i++)
                     {
                         for(int j = 0; j < view.size().width; j++)
@@ -389,7 +381,7 @@ int main( int argc, char** argv )
             {
 
                 Mat blue(600, 800, CV_8UC3, Scalar(255, 0, 0));
-                imshow("Projection", blue);
+                //imshow("Projection", blue);
 
                 difference = clock() - before;
                 msec = difference * 1000 / CLOCKS_PER_SEC;
@@ -398,7 +390,7 @@ int main( int argc, char** argv )
                 if ( msec >= trigger )
                 {
 
-
+                    imwrite( "BLUE.jpg", view);
                     for(int i = 0; i < view.size().height; i++)
                     {
                         for(int j = 0; j < view.size().width; j++)
@@ -448,7 +440,7 @@ int main( int argc, char** argv )
                     V[2][2] = vetB[2]/vetB[2];
                     */
 
-
+                    
                     V[0][0] = vetR[0]/255;
                     V[1][0] = vetR[1]/255;
                     V[2][0] = vetR[2]/255;
@@ -458,7 +450,7 @@ int main( int argc, char** argv )
                     V[0][2] = vetB[0]/255;
                     V[1][2] = vetB[1]/255;
                     V[2][2] = vetB[2]/255;
-
+                    
 
 
                     printf("\nThe matrix V is:\n");
@@ -474,7 +466,7 @@ int main( int argc, char** argv )
                     printf("Stage 4 finalized\n__________________________________\n");
 
 
-                    /* 
+                    /*
                     applying the photometric model to generate predicted image based on projected image
                     C = A(VP + F)
                     firs we need AV matrix and AF vector
@@ -526,56 +518,6 @@ int main( int argc, char** argv )
 
                     projectedImage = img1;
                     imshow("Projection", projectedImage);
-
-
-                    // GETTING THE PREDICTED IMAGE
-
-                    for(int i = 0; i < view.size().width; i++)
-                    {
-                        for(int j = 0; j < view.size().height; j++)
-                        {
-                            
-                            double AVP[3] = {0};
-
-                            for(int l = 0; l < 3; l++)
-                            {
-                                for(int c = 0; c < 3; c++)
-                                {
-                                    AVP[l] += projectedImage.at<Vec3b>(j%projectedImage.rows, i%projectedImage.cols)[2 - l] * AV[l][c];
-                                    
-                                }
-                            }
-
-                            int r = int(AVP[0] + AF[0]);
-                            int g = int(AVP[1] + AF[1]);
-                            int b = int(AVP[2] + AF[2]);
-
-                            if (r > 250) 
-                                r = 250;
-                            if (g > 250)
-                                g = 250;
-                            if (b > 250)
-                                b = 250;
-
-
-                            
-                            predictedImage.at<Vec3b>(j%predictedImage.rows, i%predictedImage.cols)[0] = b;
-                            predictedImage.at<Vec3b>(j%predictedImage.rows, i%predictedImage.cols)[1] = g;
-                            predictedImage.at<Vec3b>(j%predictedImage.rows, i%predictedImage.cols)[2] = r;
-                            
-                            //setPixelCv(predictedImage, i, j, r, g, b);
-
-
-                            
-                        }
-                    }
-
-                    namedWindow("Predicted Image", WINDOW_NORMAL);
-                    imshow("Predicted Image", predictedImage);
-                    imwrite("predictedImage-.jpg", predictedImage);
-
-
-
                     
 
                 }
@@ -586,7 +528,7 @@ int main( int argc, char** argv )
             default:
             {
                 Mat black(600, 800, CV_8UC3, Scalar(0, 0, 0));
-                imshow("Projection", black);
+                imshow("Projection", img1);
 
                 difference = clock() - before;
                 msec = difference * 1000 / CLOCKS_PER_SEC;
@@ -594,7 +536,7 @@ int main( int argc, char** argv )
                 //wait 5 sec
                 if ( msec >= trigger )
                 {
-
+                    imwrite( "BLACK.jpg", view);
                     for(int i = 0; i < view.size().height; i++)
                     {
                         for(int j = 0; j < view.size().width; j++)
@@ -638,15 +580,183 @@ int main( int argc, char** argv )
             }
 
 
+            } // END SWITCH
 
 
 
+        }
+
+        if(detectingTouch)
+        {
+
+            // GETTING THE PREDICTED IMAGE
+
+            for(int i = 0; i < view.size().width; i++)
+            {
+                for(int j = 0; j < view.size().height; j++)
+                {
+
+                    double AVP[3] = {0};
+
+                    for(int l = 0; l < 3; l++)
+                    {
+                        for(int c = 0; c < 3; c++)
+                        {
+                            AVP[l] += projectedImage.at<Vec3b>(j%projectedImage.rows, i%projectedImage.cols)[2 - l] * AV[l][c];
+
+                        }
+                    }
+
+                    int r = int(AVP[0] + AF[0]);
+                    int g = int(AVP[1] + AF[1]);
+                    int b = int(AVP[2] + AF[2]);
+
+                    if (r > 250)
+                        r = 250;
+                    if (g > 250)
+                        g = 250;
+                    if (b > 250)
+                        b = 250;
 
 
+
+                    predictedImage.at<Vec3b>(j%predictedImage.rows, i%predictedImage.cols)[0] = b;
+                    predictedImage.at<Vec3b>(j%predictedImage.rows, i%predictedImage.cols)[1] = g;
+                    predictedImage.at<Vec3b>(j%predictedImage.rows, i%predictedImage.cols)[2] = r;
+
+                    //setPixelCv(predictedImage, i, j, r, g, b);
+
+
+
+                }
             }
 
+            imshow("PredictedImage", predictedImage);
+            /*
+
+            cvtColor(view, viewGray, COLOR_BGR2GRAY);
+            cvtColor(predictedImage, predictedImageGray, COLOR_BGR2GRAY);
+
+            // GETTING HAND REGION
+            
+            handRegion = predictedImage;
+
+            double sumColorPredictedImage;
+            
+
+            for(int i = 0; i < predictedImageGray.size().height; i++)
+                    {
+                        for(int j = 0; j < predictedImageGray.size().width; j++)
+                        {
+                            Raverage += getRedCv(predictedImageGray, j, i);
+                            Gaverage += getGreenCv(predictedImageGray, j, i);
+                            Baverage += getBlueCv(predictedImageGray, j, i);
 
 
+
+                        }
+                    }
+
+                    double tam = predictedImageGray.size().width * predictedImageGray.size().height;
+                    sumColorPredictedImage = (Raverage/tam + Gaverage/tam + Baverage/tam);
+
+
+            double aR, aG, aB;
+
+
+
+
+            for(int i = 0; i < viewGray.size().width; i++)
+            {
+                for(int j = 0; j < viewGray.size().height; j++)
+                {
+
+                    int r = predictedImageGray.at<Vec3b>(j%predictedImageGray.rows, i%predictedImageGray.cols)[2];
+                    int g = predictedImageGray.at<Vec3b>(j%predictedImageGray.rows, i%predictedImageGray.cols)[1];
+                    int b = predictedImageGray.at<Vec3b>(j%predictedImageGray.rows, i%predictedImageGray.cols)[0];
+
+                    if(r != 0){
+                        aR = viewGray.at<Vec3b>(j%viewGray.rows, i%viewGray.cols)[2] / r;
+                    }
+                    else{
+                        aR = viewGray.at<Vec3b>(j%viewGray.rows, i%viewGray.cols)[2];
+                    }
+
+                    if(g != 0){
+                        aG = viewGray.at<Vec3b>(j%viewGray.rows, i%viewGray.cols)[1] / g;
+                    }
+                    else{
+                        aR = viewGray.at<Vec3b>(j%viewGray.rows, i%viewGray.cols)[1];
+                    }
+
+                    if(b != 0){
+                        aB = viewGray.at<Vec3b>(j%viewGray.rows, i%viewGray.cols)[0] / b;
+                    }
+                    else{
+                       aB = viewGray.at<Vec3b>(j%viewGray.rows, i%viewGray.cols)[0];
+                    }
+
+
+                    /*
+                    aR = viewGray.at<Vec3b>(j%viewGray.rows, i%viewGray.cols)[2] / predictedImageGray.at<Vec3b>(j%predictedImageGray.rows, i%predictedImageGray.cols)[2];
+                    aG = viewGray.at<Vec3b>(j%viewGray.rows, i%viewGray.cols)[1] / predictedImageGray.at<Vec3b>(j%predictedImageGray.rows, i%predictedImageGray.cols)[1];
+                    aB = viewGray.at<Vec3b>(j%viewGray.rows, i%viewGray.cols)[0] / predictedImageGray.at<Vec3b>(j%predictedImageGray.rows, i%predictedImageGray.cols)[0];
+                    
+
+                    
+                    if((aR + aG + aB) < (100)){
+
+                        handRegion.at<Vec3b>(j%handRegion.rows, i%handRegion.cols)[0] = 255;
+                        handRegion.at<Vec3b>(j%handRegion.rows, i%handRegion.cols)[1] = 255;
+                        handRegion.at<Vec3b>(j%handRegion.rows, i%handRegion.cols)[2] = 255;
+
+                    }
+                    else{
+
+                        handRegion.at<Vec3b>(j%handRegion.rows, i%handRegion.cols)[0] = 0;
+                        handRegion.at<Vec3b>(j%handRegion.rows, i%handRegion.cols)[1] = 0;
+                        handRegion.at<Vec3b>(j%handRegion.rows, i%handRegion.cols)[2] = 0;
+                    }
+                }
+            }
+            
+
+
+            namedWindow("Hand Region", WINDOW_NORMAL);
+
+            imshow("Hand Region", handRegion);
+            */
+
+
+            // calc the difference
+            Mat diff;
+            absdiff(view, predictedImage, diff);
+
+            // Get the mask if difference greater than th
+            int th = 100;  // 0
+            Mat mask(view.size(), CV_8UC1);
+            for(int i=0; i<diff.rows; ++i)
+            {
+                for(int j=0; j<diff.cols; ++j)
+                {
+                    Vec3b pix = diff.at<Vec3b>(i,j);
+                    int val = (pix[0] + pix[1] + pix[2]);
+                    if(val>th)
+                    {
+                        mask.at<unsigned char>(i,j) = 255;
+                    }
+                }
+            }
+
+            // get the foreground
+            Mat res;
+            bitwise_and(predictedImage, predictedImage, res, mask);
+
+            threshold(res, res, 0, 255, THRESH_BINARY);
+            // display
+            imshow("res", res);
+
+            
         }
 
 
@@ -666,7 +776,13 @@ int main( int argc, char** argv )
             before = clock();
         }
 
-        if( key == 'w'){
+        if(key == 'd' && photometric == CALIBRATED)
+        {
+            detectingTouch = !detectingTouch;
+        }
+
+        if( key == 'w')
+        {
             imwrite( "capturedImage-.jpg", view);
         }
 
@@ -674,7 +790,7 @@ int main( int argc, char** argv )
             undistortImage = !undistortImage;
 
 
-        if( capture.isOpened() && key == 'c' )
+        if( capture.isOpened() && key == 'c' && mode == DETECTION)
         {
             mode = CAPTURING;
         }

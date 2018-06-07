@@ -284,14 +284,12 @@ int main(int argc, const char** argv)
         {
             detectingTouch = !detectingTouch;
             cout << "Toggle detecting touch: " << (detectingTouch ? "ON" : "OFF") << endl;
-
-            projectedImage = img;
-            imshow("Projection", projectedImage);
         }
 
-        if(key == 'l' detectingTouch)
+        if(key == 'l')
         {
-            projectedImage = img;
+            Mat gray(600, 800, CV_8UC3, Scalar(200, 200, 200));
+            projectedImage = gray;
             imshow("Projection", projectedImage);
         }
 
