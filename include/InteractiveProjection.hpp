@@ -33,9 +33,13 @@ public:
     void ShowDetectedInteraction();
     void UpdateProjectedImage(Mat image);
     void Apply();
-    bool FingertipInteraction();
-    bool RegionInteraction();
+    bool FingertipInteraction(Rect rectangle);
+    bool RegionInteraction(Rect rectangle);
+    bool FingertipInteraction(Point center, double radius);
+    bool RegionInteraction(Point center, double radius);
     void KeyListener();
+
+
     Mat capturedImage, projectedImage, H, foregroundMask, foreground, background, chessboardMatrix, drawing;
     Size boardSize;
     vector<Point2f> cornersPattern, cornersCameraView;
@@ -51,10 +55,11 @@ public:
     Ptr<BackgroundSubtractorMOG2> model;
 
 
-
-
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
+
+    Point fingertip;
+    int max_contour;
 protected:
 
 private:

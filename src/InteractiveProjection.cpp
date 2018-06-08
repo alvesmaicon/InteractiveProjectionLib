@@ -118,7 +118,7 @@ void InteractiveProjection::Apply()
             Will be a little hope to find the correct point.
         */
         double max_area = 0;
-        int max_contour;
+        
         vector<vector<Point>> hull(contours.size());
 
 
@@ -148,7 +148,7 @@ void InteractiveProjection::Apply()
             convexHull(contours[max_contour], hull[max_contour], false, false);
             drawContours( drawing, hull, max_contour, color, 1, 8, vector<Vec4i>(), 0, Point() );
 
-            Point fingertip;
+            
             double max_dist = 0;
             for(int k = 0; k< hull[max_contour].size(); k++)
             {
@@ -174,12 +174,44 @@ void InteractiveProjection::Apply()
     }
 }
 
-bool InteractiveProjection::FingertipInteraction(){
+bool InteractiveProjection::FingertipInteraction(Rect rectangle){
+    if(!contours.empty()){
+        if(rectangle.contains(fingertip))
+            return true;
+    }
 
     return false;
 }
 
-bool InteractiveProjection::RegionInteraction(){
+bool InteractiveProjection::RegionInteraction(Rect rectangle){
+    if(!contours.empty()){
+        for(int i = 0; i < contours[max_contour].size(); i++)
+        {
+            if(rectangle.contains(contours[max_contour][i]))
+                return true;
+        }
+    }
+
+    return false;
+}
+
+bool InteractiveProjection::FingertipInteraction(Point center, double radius){
+
+    double dist = norm(fingertip - center);
+    if (dist < radius)
+        return true;
+    return false;
+}
+
+bool InteractiveProjection::RegionInteraction(Point center, double radius){
+
+    
+    for(int i = 0; i < contours[max_contour].size(); i++)
+    {
+        double dist = norm(contours[max_contour][i] - center);
+        if (dist < radius)
+        return true;
+    }
 
     return false;
 }
