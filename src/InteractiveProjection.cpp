@@ -272,6 +272,8 @@ void InteractiveProjection::KeyListener()
     if( cap.isOpened() && key == 'c' && mode == DETECTION)
     {
         mode = CAPTURING;
+        projectedImage = chessboardMatrix;
+        imshow("Projection", projectedImage);
         GetHomography();
         return;
     }
