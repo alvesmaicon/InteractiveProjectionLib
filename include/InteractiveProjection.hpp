@@ -20,48 +20,47 @@
 
 
 
-class AlsaControl {
+using namespace std;
+using namespace cv;
+
+class InteractiveProjection
+{
 public:
-  void ShowALSAParameters();
-  void Listen();
-  void Listen(std::string filename);
-  void ListenWithCallback(std::function<void(void *, int)> func);
-  void ListenWithCallback(std::function<void(void *, int)> func,
-      std::string filename);
-  void RecordToFile(std::string filename, int const &duration_in_us);
+    InteractiveProjection();
+    ~InteractiveProjection();
+    void Start(int cameraId);
+    void ShowCapturedImage();
+    void ShowDetectedInteraction();
+    void UpdateProjectedImage(Mat image);
+    void Apply();
+    void KeyListener();
+    Mat capturedImage, projectedImage, H, foregroundMask, foreground, background, chessboardMatrix, drawing;
+    Size boardSize;
+    vector<Point2f> cornersPattern, cornersCameraView;
 
-  void ForcePeriodSize(int const &value);
+    int mode = DETECTION;
 
-  void Stop();
+    VideoCapture cap;
 
-  AlsaControl(unsigned int const &rate, unsigned long const &frames,
-      int const &bits, unsigned int const &stereo_mode);
-  virtual ~AlsaControl();
+    bool foundCornersPattern;
+    bool doUpdateModel = false, undistortImage = false, detectingTouch = false;
+
+
+    Ptr<BackgroundSubtractorMOG2> model;
+
+
+
+
+    vector<vector<Point> > contours;
+    vector<Vec4i> hierarchy;
+protected:
 
 private:
-  unsigned int rate_;
-  snd_pcm_uframes_t frames_;
-  int bits_;
-  unsigned int stereo_mode_;
+    void GetHomography();
+    void DoUndistortCapture();
 
-  unsigned int time_period_;
-  snd_pcm_hw_params_t *params_;
-  snd_pcm_t *handle_;
-  snd_pcm_uframes_t period_size_;
 
-  std::atomic<bool> continue_listening_;
-  std::future<void> thread_;
 
-  void OpenPcmDevice();
-  void SetParametersALSA();
-
-  void ThreadListen(std::string filename);
-  void ThreadListenWithCallback(std::function<void(void *, int)> func,
-      std::string filename);
-  void ThreadRecordToFile(std::string filename, int const &duration_in_us);
-
-  AlsaControl() = delete;
-  AlsaControl(const AlsaControl &) = delete;
 };
 
 #endif //INTERACTIVE_PROJECTION_HPP_
