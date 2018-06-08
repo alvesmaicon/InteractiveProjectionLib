@@ -33,6 +33,8 @@ public:
     void ShowDetectedInteraction();
     void UpdateProjectedImage(Mat image);
     void Apply();
+    bool FingertipInteraction();
+    bool RegionInteraction();
     void KeyListener();
     Mat capturedImage, projectedImage, H, foregroundMask, foreground, background, chessboardMatrix, drawing;
     Size boardSize;

@@ -174,6 +174,16 @@ void InteractiveProjection::Apply()
     }
 }
 
+bool InteractiveProjection::FingertipInteraction(){
+
+    return false;
+}
+
+bool InteractiveProjection::RegionInteraction(){
+
+    return false;
+}
+
 void InteractiveProjection::UpdateProjectedImage(Mat image)
 {
     projectedImage = image;
