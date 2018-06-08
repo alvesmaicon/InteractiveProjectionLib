@@ -32,6 +32,7 @@ public:
     void ShowCapturedImage();
     void ShowDetectedInteraction();
     void UpdateProjectedImage(Mat image);
+    void ShowProjectedImage();
     void Apply();
     bool FingertipInteraction(Rect rectangle);
     bool RegionInteraction(Rect rectangle);

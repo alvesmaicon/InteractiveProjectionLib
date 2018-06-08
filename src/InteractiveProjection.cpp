@@ -219,8 +219,11 @@ bool InteractiveProjection::RegionInteraction(Point center, double radius){
 void InteractiveProjection::UpdateProjectedImage(Mat image)
 {
     projectedImage = image;
-    imshow("Projection", projectedImage);
+}
 
+void InteractiveProjection::ShowProjectedImage()
+{
+    imshow("Projection", projectedImage);
 }
 
 void InteractiveProjection::GetHomography()
