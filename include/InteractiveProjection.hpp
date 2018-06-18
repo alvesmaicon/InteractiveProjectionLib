@@ -41,7 +41,7 @@ public:
     void KeyListener();
 
 
-    Mat capturedImage, projectedImage, H, foregroundMask, foreground, background, chessboardMatrix, drawing;
+    Mat capturedImage, projectedImage, H, foregroundMask, chessboardMatrix, drawing;
     Size boardSize;
     vector<Point2f> cornersPattern, cornersCameraView;
 
@@ -52,9 +52,9 @@ public:
     bool foundCornersPattern;
     bool doUpdateModel = false, undistortImage = false, detectingTouch = false;
 
-
     Ptr<BackgroundSubtractorMOG2> model;
 
+    RNG rng;
 
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
