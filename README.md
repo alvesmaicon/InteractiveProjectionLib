@@ -10,13 +10,13 @@ OpenCV 3.0 is required.
  
 ### Keys to interaction
 
-   Key     | Description
------------| -----------------------------------------------
-     'c'   | capture chessboeard corners to find homography
-     'u'   | undistort captured image                      
-     'd'   | start interaction detection                   
-     ' '   | active recursive training of background       
-     'l'   | clear background subtractor history           
-esc or 'q' | quit application                              
+  Key | Description
+------| -----------------------------------------------
+'c'   | capture chessboeard corners to find homography
+'u'   | undistort captured image                      
+'d'   | start interaction detection                   
+' '   | active recursive training of background       
+'l'   | clear background subtractor history           
+esc   | quit application                              
 
 
