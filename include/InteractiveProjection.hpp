@@ -26,6 +26,11 @@ using namespace cv;
 class InteractiveProjection
 {
 public:
+    //* Default constructor
+    /*!
+    \return This method does not have a return.
+    */
+    
     InteractiveProjection();
     ~InteractiveProjection();
     void Start(int cameraId);
