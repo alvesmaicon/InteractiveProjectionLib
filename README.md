@@ -19,4 +19,6 @@ OpenCV 3.0 is required.
 'l'   | clear background subtractor history           
 esc   | quit application                              
 
-
+### Interactive projection game made with InteractiveProjectionLib
+Make your own interactive projection applications using an opencv open source library.
+[![](http://img.youtube.com/vi/FUYwdyEmzTk/0.jpg)](http://www.youtube.com/watch?v=FUYwdyEmzTk "")
